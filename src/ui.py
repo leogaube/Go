@@ -7,18 +7,29 @@ BROWN = [196, 164, 132]
 BOARD_SIZE = 9
 SCREEN_SIZE = 800
 DISTANCE = SCREEN_SIZE // (BOARD_SIZE + 1)
+STONE_RADIUS = DISTANCE * 0.4
 
 assert BOARD_SIZE % 2 == 1
+
+
+def out_off_bounds(pos):
+    y, x = pos
+    if y < 0 or x < 0 or y >= BOARD_SIZE or x >= BOARD_SIZE:
+        return True
+    return False
 
 
 def get_surrounding_positions(center, offset):
     """returns all positions that sourround the center with a given offset."""
     y, x = center
     for y_offset in range(-offset, offset + 1):
-        for x_offset in range(-offset, offset + 1):
-            if abs(y_offset) != offset and abs(x_offset) != offset:
+        for x_offset in range(offset, -offset - 1, -1):
+            if abs(y_offset) + abs(x_offset) != offset:
                 continue
-            yield [y + y_offset, x + x_offset]
+            pos = [y + y_offset, x + x_offset]
+            if out_off_bounds(pos):
+                continue
+            yield pos
 
 
 class UI:
@@ -46,6 +57,9 @@ class UI:
             return
 
         self.stones[self.c].append(self.hover_pos)
+        self.change_color()
+
+    def _pass_move(self):
         self.change_color()
 
     def _draw_board(self):
@@ -76,7 +90,7 @@ class UI:
                     self.screen,
                     color,
                     ((xi + 1) * DISTANCE, (yi + 1) * DISTANCE),
-                    DISTANCE * 0.4,
+                    STONE_RADIUS,
                 )
 
     def _draw_hover(self):
@@ -85,15 +99,15 @@ class UI:
             self.screen,
             self.color,
             ((xi + 1) * DISTANCE, (yi + 1) * DISTANCE),
-            DISTANCE * 0.4,
+            STONE_RADIUS * 0.8,
         )
-        pygame.draw.circle(
-            self.screen,
-            "gray",
-            ((xi + 1) * DISTANCE, (yi + 1) * DISTANCE),
-            DISTANCE * 0.4,
-            5,
-        )
+        # pygame.draw.circle(
+        #     self.screen,
+        #     "gray",
+        #     ((xi + 1) * DISTANCE, (yi + 1) * DISTANCE),
+        #     STONE_RADIUS,
+        #     5,
+        # )
 
     def _move_hover(self, y_offset=0, x_offset=0):
         if not self.hover_pos:
@@ -125,7 +139,7 @@ class UI:
 
     def _default_hover(self):
         center = [BOARD_SIZE // 2, BOARD_SIZE // 2]
-        for ring_size in range((BOARD_SIZE // 2) + 1):
+        for ring_size in range(BOARD_SIZE):
             for y, x in get_surrounding_positions(center, ring_size):
                 if [y, x] not in self.stones[0] + self.stones[1]:
                     self.hover_pos = [y, x]
@@ -151,6 +165,9 @@ class UI:
                 elif event.key == pygame.K_RETURN:
                     if self.hover_pos:
                         self._place_stone()
+
+                elif event.key == pygame.K_p:
+                    self._pass_move()
 
         self._draw_board()
         self._draw_stones()
