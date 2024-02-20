@@ -8,6 +8,18 @@ BOARD_SIZE = 9
 SCREEN_SIZE = 800
 DISTANCE = SCREEN_SIZE // (BOARD_SIZE + 1)
 
+assert BOARD_SIZE % 2 == 1
+
+
+def get_surrounding_positions(center, offset):
+    """returns all positions that sourround the center with a given offset."""
+    y, x = center
+    for y_offset in range(-offset, offset + 1):
+        for x_offset in range(-offset, offset + 1):
+            if abs(y_offset) != offset and abs(x_offset) != offset:
+                continue
+            yield [y + y_offset, x + x_offset]
+
 
 class UI:
     def __init__(self):
@@ -39,7 +51,7 @@ class UI:
     def _draw_board(self):
         self.screen.fill(BROWN)
 
-        for yi in range(1, 10):
+        for yi in range(1, BOARD_SIZE + 1):
             pygame.draw.line(
                 self.screen,
                 BLACK,
@@ -48,7 +60,7 @@ class UI:
                 4,
             )
 
-        for xi in range(1, 10):
+        for xi in range(1, BOARD_SIZE + 1):
             pygame.draw.line(
                 self.screen,
                 BLACK,
@@ -64,7 +76,7 @@ class UI:
                     self.screen,
                     color,
                     ((xi + 1) * DISTANCE, (yi + 1) * DISTANCE),
-                    DISTANCE * 0.35,
+                    DISTANCE * 0.4,
                 )
 
     def _draw_hover(self):
@@ -73,34 +85,52 @@ class UI:
             self.screen,
             self.color,
             ((xi + 1) * DISTANCE, (yi + 1) * DISTANCE),
-            DISTANCE * 0.35,
+            DISTANCE * 0.4,
         )
         pygame.draw.circle(
             self.screen,
             "gray",
             ((xi + 1) * DISTANCE, (yi + 1) * DISTANCE),
-            DISTANCE * 0.35,
+            DISTANCE * 0.4,
             5,
         )
 
     def _move_hover(self, y_offset=0, x_offset=0):
         if not self.hover_pos:
-            self.hover_pos = [BOARD_SIZE // 2, BOARD_SIZE // 2]
-        else:
-            assert y_offset or x_offset
-            self.hover_pos[0] += y_offset
-            self.hover_pos[1] += x_offset
+            self._default_hover()
+            return
 
+        def skip_stones():
             # skip over already placed stones
             while self.hover_pos in self.stones[0] + self.stones[1]:
                 self.hover_pos[0] += y_offset
                 self.hover_pos[1] += x_offset
 
+        def skip_edges():
+            # move to the opposite side of the board
             for i in [0, 1]:
                 if self.hover_pos[i] < 0:
                     self.hover_pos[i] = BOARD_SIZE - 1
+                    skip_stones()
                 elif self.hover_pos[i] > BOARD_SIZE - 1:
                     self.hover_pos[i] = 0
+                    skip_stones()
+
+        assert y_offset or x_offset
+        self.hover_pos[0] += y_offset
+        self.hover_pos[1] += x_offset
+
+        skip_stones()
+        skip_edges()
+
+    def _default_hover(self):
+        center = [BOARD_SIZE // 2, BOARD_SIZE // 2]
+        for ring_size in range((BOARD_SIZE // 2) + 1):
+            for y, x in get_surrounding_positions(center, ring_size):
+                if [y, x] not in self.stones[0] + self.stones[1]:
+                    self.hover_pos = [y, x]
+                    return
+        # raise BoardFullException
 
     def handle_user_input(self):
         for event in pygame.event.get():
