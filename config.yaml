@@ -1,4 +1,5 @@
 black_stone: b
 white_stone: w
-board_size: 19
+board_size: 9
+screen_size: 800
 enable_self_destruct: False
